@@ -219,7 +219,7 @@ class SliceData_ft(Dataset):
 
         
 
-        return 2*kspace_t_gt/(100*maxi) , 2*kspace_t_us/(100*maxi) , img_t_us_abs/maxi , img_t_gt_abs/maxi , maxi , fname , slice
+        return kspace_t_gt/(10*maxi) , kspace_t_us/(10*maxi) , img_t_us_abs/maxi , img_t_gt_abs/maxi , maxi , fname.name , slice
         
 
 """

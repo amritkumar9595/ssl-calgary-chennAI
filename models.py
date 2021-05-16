@@ -103,7 +103,6 @@ class UnetModel(nn.Module):
         """
         stack = []
         output = input
-
         # Apply down-sampling layers
         for layer in self.down_sample_layers:
             output = layer(output)

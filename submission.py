@@ -13,66 +13,67 @@ from collections import defaultdict
 from tqdm import tqdm
 from pathlib import Path
 import os
+from mri_data import SliceData_ft
 
-class SliceData(Dataset):
-    """
-    A PyTorch Dataset that provides access to MR image slices.
-    """
+# class SliceData(Dataset):
+#     """
+#     A PyTorch Dataset that provides access to MR image slices.
+#     """
 
-    #def __init__(self, root, acc_factor,dataset_type,mask_path): # acc_factor can be passed here and saved as self variable
-    def __init__(self, root, acc_factor): # acc_factor can be passed here and saved as self variable
-        # List the h5 files in root 
-        files = list(pathlib.Path(root).iterdir())
-        self.examples = []
-        self.acc_factor = acc_factor
-        # self.dataset_type = dataset_type
+#     #def __init__(self, root, acc_factor,dataset_type,mask_path): # acc_factor can be passed here and saved as self variable
+#     def __init__(self, root, acc_factor): # acc_factor can be passed here and saved as self variable
+#         # List the h5 files in root 
+#         files = list(pathlib.Path(root).iterdir())
+#         self.examples = []
+#         self.acc_factor = acc_factor
+#         # self.dataset_type = dataset_type
         
-        # self.sample_rate = 1.0 #sample_rate #   0.6
+#         # self.sample_rate = 1.0 #sample_rate #   0.6
         
-        # random.shuffle(files)
-        # num_files = round(len(files) * self.sample_rate)
-        # files = files[:int(sample_rate)]
+#         # random.shuffle(files)
+#         # num_files = round(len(files) * self.sample_rate)
+#         # files = files[:int(sample_rate)]
 
-        for fname in sorted(files):
-            kspace = np.load(fname)#, allow_pickle=True)
-            num_slices = kspace.shape[0]
-            self.examples += [(fname, slice) for slice in range(20,num_slices-20)]   #20 20
+#         for fname in sorted(files):
+#             kspace = np.load(fname)#, allow_pickle=True)
+#             num_slices = kspace.shape[0]
+#             self.examples += [(fname, slice) for slice in range(20,num_slices-20)]   #20 20
             
 
 
 
-    def __len__(self):
-        return len(self.examples)
+#     def __len__(self):
+#         return len(self.examples)
 
-    def __getitem__(self, i):
-        # Index the fname and slice using the list created in __init__
+#     def __getitem__(self, i):
+#         # Index the fname and slice using the list created in __init__
         
-        fname, slice = self.examples[i] 
-        # Print statements 
-        # print (fname,slice)
+#         fname, slice = self.examples[i] 
+#         # Print statements 
+#         # print (fname,slice)
 
-        data = np.load(fname)
-        kspace = data[slice]
+#         data = np.load(fname)
+#         kspace = data[slice]
 
-        kspace_cplx = kspace[:,:,0] + 1j*kspace[:,:,1]
-        kspace_cplx = np.fft.fftshift(kspace_cplx)
-        kspace_t = T.to_tensor(kspace_cplx)
+#         kspace_cplx = kspace[:,:,0] + 1j*kspace[:,:,1]
+#         kspace_cplx = np.fft.fftshift(kspace_cplx)
+#         kspace_t = T.to_tensor(kspace_cplx)
 
 
-        mask_func = MaskFunc([0.08], [self.acc_factor])
-        seed =  tuple(map(ord, str(fname)))
+#         mask_func = MaskFunc([0.08], [self.acc_factor])
+#         seed =  tuple(map(ord, str(fname)))
 
-        kspace_t_us, mask = T.apply_mask(kspace_t.float(),mask_func,seed)
+#         kspace_t_us, mask = T.apply_mask(kspace_t.float(),mask_func,seed)
 
-        img_t_us_abs = T.complex_abs(T.ifft2(kspace_t_us))
+#         img_t_us_abs = T.complex_abs(T.ifft2(kspace_t_us))
 
-        # img_us_abs = T.complex_abs(img_us).max()
+#         # img_us_abs = T.complex_abs(img_us).max()
         
-        maxi = img_t_us_abs.max()
+#         maxi = img_t_us_abs.max()
 
 
 
-        return 2*kspace_t_us/(100*maxi) ,  img_t_us_abs/maxi , maxi , fname.name , slice  
+#         return 2*kspace_t_us/(100*maxi) ,  img_t_us_abs/maxi , maxi , fname.name , slice  
 
 def save_reconstructions(reconstructions, out_dir):
     """
@@ -96,8 +97,8 @@ def save_reconstructions(reconstructions, out_dir):
 
 def create_data_loaders(args):
     
-    test_data = SliceData(args.test_path,args.acceleration_factor)           #train_data = SliceData_ft(args.train_path,args.acceleration_factor,args.dataset_type,sample_rate=args.sample)
-    
+    # test_data = SliceData(args.test_path,args.acceleration_factor)           #train_data = SliceData_ft(args.train_path,args.acceleration_factor,args.dataset_type,sample_rate=args.sample)
+    test_data   = SliceData_ft(args.test_path,args.acceleration_factor,args.dataset_type,sample_rate=10)
     test_loader = DataLoader(
         dataset=test_data,
         batch_size=1,
@@ -115,7 +116,7 @@ def run_submission(model, data_loader):
     reconstructions = defaultdict(list)
     for iter, data in enumerate(tqdm(data_loader)):
         
-        ksp_us , img_us , maxi , fname , slice = data
+        _ , ksp_us , img_us ,_ , maxi , fname , slice = data
 
         img_us = img_us.to(args.device).float()
         img_us = img_us.unsqueeze(1)
@@ -188,7 +189,7 @@ def build_wnet(args):
 def load_model(args):
     # dautomap_model = build_dautomap(args)
     if (args.model == 'unet'):
-        model = build_unet(1,args)
+        model = build_unet(1,1,args)
     elif (args.model == 'dualencoder'):
         model = build_dualencoder(args)
     elif (args.model == 'wnet'):
@@ -239,7 +240,7 @@ def create_arg_parser():
     parser.add_argument('--model', default=1, type=str,  help='Model used for reconstruction')
     parser.add_argument('--data-parallel', action='store_true', 
                         help='If set, use multiple GPUs using data parallelism')
-
+    parser.add_argument('--dataset_type',type=str,help='cardiac,kirby')
 
     
     return parser

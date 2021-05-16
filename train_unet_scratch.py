@@ -75,7 +75,7 @@ def train_epoch(args, epoch, model,data_loader, optimizer, writer):
         #print (data)
 
         #print ("Received data from loader")
-        _ , _ , img_us , target , _ = data
+        _ , _ , img_us , target , _ , _ , _ = data
         
         img_us = img_us.to(args.device).float()
         # img_us = img_us.permute(0,3,1,2)
@@ -121,7 +121,7 @@ def evaluate(args, epoch, model, data_loader, writer):
     with torch.no_grad():
         for iter, data in enumerate(tqdm(data_loader)):
     
-            _ , _ , img_us , target, _ = data
+            _ , _ , img_us , target, _ , _ , _ = data
             
             img_us = img_us.to(args.device).float()
             # img_us = img_us.permute(0,3,1,2)
@@ -156,7 +156,7 @@ def visualize(args, epoch, model, data_loader, writer):
     model.eval()
     with torch.no_grad():
         for iter, data in enumerate(tqdm(data_loader)):
-            _ , _ , img_us , target, _ = data
+            _ , _ , img_us , target, _ , _ , _= data
             
             img_us = img_us.to(args.device).float()
             # img_us = img_us.permute(0,3,1,2)

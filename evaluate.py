@@ -191,7 +191,7 @@ def evaluate(args, recons_key):
     #         recons = np.transpose(recons,[1,2,0])
     #         #print (target.shape,recons.shape)
         recons , target = get_recons_target(recons_file , tgt_file)
-
+        print()
         metrics.push(target, recons)
             
     return metrics

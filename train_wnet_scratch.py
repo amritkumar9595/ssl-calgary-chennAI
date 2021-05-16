@@ -76,7 +76,7 @@ def train_epoch(args, epoch, model,data_loader, optimizer, writer):
         #print (data)
 
         #print ("Received data from loader")
-        ksp_gt , ksp_us , img_us , target , maxi = data
+        ksp_gt , ksp_us , img_us , target , maxi, _, _ = data
         
         img_us = img_us.to(args.device).float()
 
@@ -135,7 +135,7 @@ def evaluate(args, epoch, model, data_loader, writer):
     with torch.no_grad():
         for iter, data in enumerate(tqdm(data_loader)):
     
-            ksp_gt , ksp_us , img_us , target,maxi = data
+            ksp_gt , ksp_us , img_us , target,maxi, _, _ = data
             
             img_us = img_us.to(args.device).float()
             # img_us = img_us.permute(0,3,1,2)
@@ -181,7 +181,7 @@ def visualize(args, epoch, model, data_loader, writer):
     model.eval()
     with torch.no_grad():
         for iter, data in enumerate(tqdm(data_loader)):
-            ksp_gt , ksp_us , img_us , target, maxi = data
+            ksp_gt , ksp_us , img_us , target, maxi, _, _ = data
             
             img_us = img_us.to(args.device).float()
             # img_us = img_us.permute(0,3,1,2)
@@ -307,7 +307,7 @@ def main(args):
     train_loader, dev_loader , display_loader = create_data_loaders(args)    #
     print (" \n Dataloader initialized ....")
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_step_size, args.lr_gamma)
-    print(" \n  # # # # # initializing training W-NET  from scratch  using ",args.sample,"volumes,for",args.acceleration_factor,"xaccleration # # # # #")
+    print(" \n  # # # # # initiating training W-NET  from scratch  using ",args.sample,"volumes,for",args.acceleration_factor,"xaccleration # # # # #")
     for epoch in range(start_epoch, args.num_epochs):
 
         scheduler.step(epoch)

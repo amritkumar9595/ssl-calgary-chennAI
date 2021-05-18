@@ -21,7 +21,7 @@ ZERO-FILLED
 PRETEXT='scratch'
 # PRETEXT='finetuning'     # zero_filled  ,scratch , finetuning
 MODEL='dualencoder'
-VOLUMES=1
+VOLUMES=20
 ACC_FACTOR=4
 PREDICTIONS_PATH='/media/student1/RemovableVolume/singlechannel_calgary_submission/acc_'${ACC_FACTOR}'x/'${MODEL}'/'${PRETEXT}'/'${VOLUMES}'_volumes'
 REPORT_PATH='/media/student1/RemovableVolume/reports/acc'${ACC_FACTOR}'x/'${MODEL}'/'${PRETEXT}'/'${VOLUMES}'_volumes'

@@ -144,14 +144,14 @@ class SliceData_pt(Dataset):
 
         img_t_us = T.ifft2(kspace_t_us)
 
-        img_t_gt_abs = T.complex_abs(T.ifft2(kspace_t_gt))
+        # img_t_gt_abs = T.complex_abs(T.ifft2(kspace_t_gt))
         img_t_us_abs = T.complex_abs(T.ifft2(kspace_t_us))
         
         maxi = img_t_us_abs.max()
 
         
 
-        return  2*kspace_t_us/(100*maxi) , img_t_us_abs/maxi  , img_t_us_abs/maxi ,  maxi
+        return  kspace_t_us/(10*maxi) , img_t_us_abs/maxi   , img_t_us_abs/maxi,  maxi
 
 
 

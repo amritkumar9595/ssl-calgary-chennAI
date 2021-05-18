@@ -9,15 +9,14 @@ DEVICE='cuda:0'
 BATCH_SIZE=1
 
                                           ### U-Net  ###
-# <<TRAINING_U-NET_FROM_SCRATCH
+<<TRAINING_U-NET_FROM_SCRATCH
 LEARNING_RATE=0.0001
-N0_OF_VOLUMES=20
+N0_OF_VOLUMES=1
 NUM_EPOCHS=100
-ACC_FACTOR=4
+ACC_FACTOR=8
 EXP_DIR='/media/student1/NewVolume/MR_Reconstruction/experiments/singlechannel_calgary/acc_'${ACC_FACTOR}'x/unet/scratch/'${N0_OF_VOLUMES}'_volumes'
 python train_unet_scratch.py --batch-size ${BATCH_SIZE} --num-epochs ${NUM_EPOCHS} --device ${DEVICE} --exp-dir ${EXP_DIR} --train-path ${TRAIN_PATH} --validation-path ${VALIDATION_PATH} --acceleration_factor ${ACC_FACTOR} --dataset_type ${DATASET_TYPE}  --sample ${N0_OF_VOLUMES} --lr ${LEARNING_RATE} 
-# TRAINING_U-NET_FROM_SCRATCH
-
+TRAINING_U-NET_FROM_SCRATCH
 
 
 <<PRETRAINING_U-NET
@@ -43,11 +42,12 @@ python train_unet_finetune.py --batch-size ${BATCH_SIZE} --num-epochs ${NUM_EPOC
 FINETUNING_U-NET
       
                                              ### Dual-encoder  ###
+
 # <<TRAINING_DUALENCODER_FROM_SCRATCH
 LEARNING_RATE=0.00015
-N0_OF_VOLUMES=20
+N0_OF_VOLUMES=1
 NUM_EPOCHS=100
-ACC_FACTOR=4
+ACC_FACTOR=8
 EXP_DIR='/media/student1/NewVolume/MR_Reconstruction/experiments/singlechannel_calgary/acc_'${ACC_FACTOR}'x/dualencoder/scratch/'${N0_OF_VOLUMES}'_volumes'
 python train_dualencoder_scratch.py --batch-size ${BATCH_SIZE} --num-epochs ${NUM_EPOCHS} --device ${DEVICE} --exp-dir ${EXP_DIR} --train-path ${TRAIN_PATH} --validation-path ${VALIDATION_PATH} --acceleration_factor ${ACC_FACTOR} --dataset_type ${DATASET_TYPE}  --sample ${N0_OF_VOLUMES} --lr ${LEARNING_RATE} 
 # TRAINING_DUALENCODER_FROM_SCRATCH
@@ -76,16 +76,15 @@ FINETUNING_OF_DUALENCODER
 
 
                                              ### W-Net ###
-# <<TRAINING_WNET_FROM_SCRATCH
+<<TRAINING_WNET_FROM_SCRATCH
 LAMBDAA=0.1
 LEARNING_RATE=0.001
-N0_OF_VOLUMES=20
+N0_OF_VOLUMES=
 NUM_EPOCHS=100
 ACC_FACTOR=4
 EXP_DIR='/media/student1/NewVolume/MR_Reconstruction/experiments/singlechannel_calgary/acc_'${ACC_FACTOR}'x/wnet/scratch/'${N0_OF_VOLUMES}'_volumes'
 python train_wnet_scratch.py --batch-size ${BATCH_SIZE} --num-epochs ${NUM_EPOCHS} --device ${DEVICE} --exp-dir ${EXP_DIR} --train-path ${TRAIN_PATH} --validation-path ${VALIDATION_PATH} --acceleration_factor ${ACC_FACTOR} --dataset_type ${DATASET_TYPE}  --sample ${N0_OF_VOLUMES} --lr ${LEARNING_RATE} --lambdaa ${LAMBDAA}
-# TRAINING_WNET_FROM_SCRATCH
-
+TRAINING_WNET_FROM_SCRATCH
 
 
 <<PRETRAINING_OF_WNET

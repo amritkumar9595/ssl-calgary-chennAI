@@ -454,7 +454,7 @@ class Wnet(nn.Module):
         
         # print("ksp_pred",ksp_pred.shape)
         # print("maxi",maxi.shape)
-        ksp_pred = ksp_pred*100*maxi/2
+        ksp_pred = ksp_pred*10*maxi
         
         # img_pred = T.ifft2(ksp_pred).permute(0,3,1,2)
 

@@ -13,8 +13,8 @@ import torchvision
 from tensorboardX import SummaryWriter
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
-from mri_data import SliceData_pt
-from models import dAUTOMAP , UnetModelParallelEncoder, dAUTOMAPDualEncoderUnet , build_dautomap
+from mri_data import SliceData_ft
+from models import dAUTOMAP , UnetModelParallelEncoder, dAUTOMAPDualEncoderUnet ,build_dautomap
 import torchvision
 from torch import nn
 from torch.autograd import Variable
@@ -29,8 +29,8 @@ def create_datasets(args):
     # train_path ='/media/student1/NewVolume/MR_Reconstruction/datasets/calgary_singlecoil/Train'
     # validation_path ='/media/student1/NewVolume/MR_Reconstruction/datasets/calgary_singlecoil/Val'
     
-    train_data = SliceData_pt(args.train_path,args.acceleration_factor,args.dataset_type,sample_rate=25)
-    dev_data   = SliceData_pt(args.validation_path,args.acceleration_factor,args.dataset_type,sample_rate=10)
+    train_data = SliceData_ft(args.train_path,args.acceleration_factor,args.dataset_type,sample_rate=args.sample)
+    dev_data   = SliceData_ft(args.validation_path,args.acceleration_factor,args.dataset_type,sample_rate=10)
 
     return dev_data, train_data
 
@@ -75,9 +75,11 @@ def train_epoch(args, epoch, model,data_loader, optimizer, writer):
         #print (data)
 
         #print ("Received data from loader")
-        ksp_us , img_us , target, _ = data
+        _, ksp_us , img_us , target, _ ,_ ,_ = data
         
-        img_us = img_us.unsqueeze(1).to(args.device).float()
+        img_us = img_us.to(args.device).float()
+        # img_us = img_us.permute(0,3,1,2)
+        img_us = img_us.unsqueeze(1)
 
         target = target.unsqueeze(1).to(args.device).float()
 
@@ -121,9 +123,11 @@ def evaluate(args, epoch, model, data_loader, writer):
     with torch.no_grad():
         for iter, data in enumerate(tqdm(data_loader)):
     
-            ksp_us , img_us , target, _ = data
+            _ , ksp_us , img_us , target, _ ,_ ,_ = data
             
-            img_us = img_us.unsqueeze(1).to(args.device).float()
+            img_us = img_us.to(args.device).float()
+            # img_us = img_us.permute(0,3,1,2)
+            img_us = img_us.unsqueeze(1)
 
             target = target.unsqueeze(1).to(args.device).float()
             ksp_us = ksp_us.permute(0,3,1,2).to(args.device).float()
@@ -154,10 +158,11 @@ def visualize(args, epoch, model, data_loader, writer):
     model.eval()
     with torch.no_grad():
         for iter, data in enumerate(tqdm(data_loader)):
-            ksp_us , img_us , target, _ = data
+            _ , ksp_us , img_us , target, _ , _, _ = data
             
-    
-            img_us = img_us.unsqueeze(1).to(args.device).float()
+            img_us = img_us.to(args.device).float()
+            # img_us = img_us.permute(0,3,1,2)
+            img_us = img_us.unsqueeze(1)
 
             target = target.unsqueeze(1).to(args.device).float()
             ksp_us = ksp_us.permute(0,3,1,2).to(args.device).float()
@@ -216,6 +221,12 @@ def build_model(args):
     dautomap_model = build_dautomap(args)
     dualencoderunet_model = build_dualencoderunet(args)
     model = dAUTOMAPDualEncoderUnet(dautomap_model,dualencoderunet_model).to(args.device)
+
+    print(" \n loading pretext file from = ",args.pretext)
+    pretext = torch.load(args.pretext)
+    model.load_state_dict(pretext['model'])
+
+    print(" \n initialized with pretrained weights.....  \n ")
     
     # model = dautomap_model
     return model
@@ -273,7 +284,7 @@ def main(args):
     train_loader, dev_loader , display_loader = create_data_loaders(args)    #
     print (" \n Dataloader initialized ....")
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_step_size, args.lr_gamma)
-    print(" \n  # # # # # initializing PRETEXT training OF DUALENCODER  using ",args.sample,"volumes,for",args.acceleration_factor,"x accleration # # # # #")
+    print(" \n  # # # # # initializing FINETUNING OF DUALENCODER  using ",args.sample,"volumes,for",args.acceleration_factor,"xaccleration # # # # #")
     for epoch in range(start_epoch, args.num_epochs):
 
         scheduler.step(epoch)
@@ -329,6 +340,8 @@ def create_arg_parser():
     parser.add_argument('--usmask_path',type=str,help='undersampling mask path')
     parser.add_argument('--sample', type=int, default=1,
                         help='Number of volumes to be used for training and validation')
+    parser.add_argument('--pretext', type=pathlib.Path, default='pretextmodel',
+                        help='Path where the pretrained model is saved')
 
 
     

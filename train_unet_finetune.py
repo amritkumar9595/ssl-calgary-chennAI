@@ -73,11 +73,9 @@ def train_epoch(args, epoch, model,data_loader, optimizer, writer):
 
     for iter, data in enumerate(tqdm(data_loader)):
 
-        _ , _ , img_us , target, _ = data
+        _ , _ , img_us , target , _ , _ , _ = data
         
-        img_us = img_us.to(args.device).float()
-        # img_us = img_us.permute(0,3,1,2)
-        img_us = img_us.unsqueeze(1)
+        img_us = img_us.unsqueeze(1).to(args.device).float()
 
         target = target.unsqueeze(1).to(args.device).float()
 
@@ -119,11 +117,9 @@ def evaluate(args, epoch, model, data_loader, writer):
     with torch.no_grad():
         for iter, data in enumerate(tqdm(data_loader)):
     
-            _ , _ , img_us , target, _ = data
+            _ , _ , img_us , target , _ , _ , _ = data
             
-            img_us = img_us.to(args.device).float()
-            # img_us = img_us.permute(0,3,1,2)
-            img_us = img_us.unsqueeze(1)
+            img_us = img_us.unsqueeze(1).to(args.device).float()
 
             target = target.unsqueeze(1).to(args.device).float()
 
@@ -154,11 +150,9 @@ def visualize(args, epoch, model, data_loader, writer):
     model.eval()
     with torch.no_grad():
         for iter, data in enumerate(tqdm(data_loader)):
-            _ , _ , img_us , target, _ = data
+            _ , _ , img_us , target , _ , _ , _ = data
             
-            img_us = img_us.to(args.device).float()
-            # img_us = img_us.permute(0,3,1,2)
-            img_us = img_us.unsqueeze(1)
+            img_us = img_us.unsqueeze(1).to(args.device).float()
 
             target = target.unsqueeze(1).to(args.device).float()
 
@@ -193,9 +187,6 @@ def save_model(args, exp_dir, epoch, model, optimizer,best_dev_loss,is_new_best)
         
         
         
- 
-
-
 
 def build_unet(args):
     # print("device",args.device)
@@ -242,7 +233,6 @@ def load_model(checkpoint_file):
 
 def build_optim(args, params):
     optimizer = torch.optim.Adam(params, args.lr, weight_decay=args.weight_decay)
-    # optimizer = torch.optim.RMSprop(params, args.lr, weight_decay=args.weight_decay)
 
     return optimizer
 
@@ -257,7 +247,6 @@ def main(args):
 
     if args.resume:
         print('resuming model, batch_size', args.batch_size)
-        #checkpoint, model, optimizer, disc, optimizerD = load_model(args, args.checkpoint)
         checkpoint, model, optimizer = load_model(args.checkpoint)
         args = checkpoint['args']
         best_dev_loss= checkpoint['best_dev_loss']
@@ -279,7 +268,7 @@ def main(args):
     print (" \n \n  Dataloaders ready......")
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_step_size, args.lr_gamma)
     
-    print(" \n  \n  # # # # # initilaizing FINETUNING OF U-NET using ", args.sample ,"volumes for ",args.acceleration_factor,"x acceleration # # # # #")
+    print(" \n  \n  # # # # # initiating FINETUNING OF U-NET using ", args.sample ,"volumes for ",args.acceleration_factor,"x acceleration # # # #  ")
     for epoch in range(start_epoch, args.num_epochs):
 
         scheduler.step(epoch)

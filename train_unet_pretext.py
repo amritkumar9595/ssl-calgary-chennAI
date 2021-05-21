@@ -271,7 +271,7 @@ def main(args):
     train_loader, dev_loader , display_loader = create_data_loaders(args)    #
     print (" \n all dataloaders ready")
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_step_size, args.lr_gamma)
-    print(" \n  # # # # # initializing AUTOENCODER pre-training of U-NET for ",args.acceleration_factor,"x acceleration # # # # #")
+    print(" \n  # # # # # initiating AUTOENCODER pre-training of U-NET for ",args.acceleration_factor,"x acceleration # # # # #")
     for epoch in range(start_epoch, args.num_epochs):
 
         scheduler.step(epoch)

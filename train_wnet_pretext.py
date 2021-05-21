@@ -14,7 +14,7 @@ from tensorboardX import SummaryWriter
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from mri_data import SliceData_pt
-from models import dAUTOMAP , UnetModelParallelEncoder, dAUTOMAPDualEncoderUnet , build_dautomap
+from models import UnetModel , Wnet
 import torchvision
 from torch import nn
 from torch.autograd import Variable
@@ -29,7 +29,7 @@ def create_datasets(args):
     # train_path ='/media/student1/NewVolume/MR_Reconstruction/datasets/calgary_singlecoil/Train'
     # validation_path ='/media/student1/NewVolume/MR_Reconstruction/datasets/calgary_singlecoil/Val'
     
-    train_data = SliceData_pt(args.train_path,args.acceleration_factor,args.dataset_type,sample_rate=25)
+    train_data = SliceData_pt(args.train_path,args.acceleration_factor,args.dataset_type,sample_rate=args.sample)
     dev_data   = SliceData_pt(args.validation_path,args.acceleration_factor,args.dataset_type,sample_rate=10)
 
     return dev_data, train_data
@@ -62,6 +62,7 @@ def create_data_loaders(args):
     return train_loader, dev_loader , display_loader
 
 
+
 def train_epoch(args, epoch, model,data_loader, optimizer, writer):
     
     model.train()
@@ -75,29 +76,39 @@ def train_epoch(args, epoch, model,data_loader, optimizer, writer):
         #print (data)
 
         #print ("Received data from loader")
-        ksp_us , img_us , target, _ = data
-        
+        ksp_us , img_us , target, maxi = data
+
         img_us = img_us.unsqueeze(1).to(args.device).float()
 
         target = target.unsqueeze(1).to(args.device).float()
-
-        ksp_us = ksp_us.permute(0,3,1,2).to(args.device).float()
+        
+        ksp_us = ksp_us.to(args.device).float()
+        ksp_us_in = ksp_us.permute(0,3,1,2).to(args.device).float()
         # print("ksp_us",ksp_us.shape)
 
+        # print("maxi=",maxi.shape)
+        maxi = maxi.to(args.device).float()
 
-        output,_= model(ksp_us,img_us)
+        output, out_ksp, _= model(ksp_us_in,maxi)
         #print ("Input passed to model")
         # print("image",image.shape,output.shape,target.shape)
-        loss = F.mse_loss(output,target)
+        loss = (1 - args.lambdaa)*F.mse_loss(output,target) + args.lambdaa*F.mse_loss(out_ksp,ksp_us)
         # loss = F.l1_loss(output,target)
         #print ("Loss calculated")
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
+        loss_img = (1 - args.lambdaa)*F.mse_loss(output,target)
+        loss_ksp = args.lambdaa*F.mse_loss(out_ksp,ksp_us) 
+        # loss_ksp = F.mse_loss(out_ksp,ksp_us)
+        # print("loss_ksp=",loss_ksp.item())
+
         avg_loss = 0.99 * avg_loss + 0.01 * loss.item() if iter > 0 else loss.item()
         writer.add_scalar('TrainLoss',loss.item(),global_step + iter )
-
+        writer.add_scalar('TrainLoss_ksp',loss_ksp.item(),global_step + iter )
+        writer.add_scalar('TrainLoss_img',loss_img.item(),global_step + iter )
+        
 
         if iter % args.report_interval == 0:
             logging.info(
@@ -116,29 +127,44 @@ def evaluate(args, epoch, model, data_loader, writer):
 
     model.eval()
     losses = []
+    losses_img = []
+    losses_ksp = []
     start = time.perf_counter()
     
     with torch.no_grad():
         for iter, data in enumerate(tqdm(data_loader)):
     
-            ksp_us , img_us , target, _ = data
+            ksp_us , img_us , target, maxi = data
             
             img_us = img_us.unsqueeze(1).to(args.device).float()
+            # img_us = img_us.permute(0,3,1,2)
 
             target = target.unsqueeze(1).to(args.device).float()
-            ksp_us = ksp_us.permute(0,3,1,2).to(args.device).float()
+            ksp_us = ksp_us.to(args.device).float()
+            ksp_us_in = ksp_us.permute(0,3,1,2).to(args.device).float()
+            # print("ksp_us",ksp_us.shape)
 
+            # print("maxi=",maxi.shape)
+            maxi = maxi.to(args.device).float()
 
-            output,_= model(ksp_us,img_us)
+            output, out_ksp, _= model(ksp_us_in,maxi)
             #print ("Input passed to model")
             # print("image",image.shape,output.shape,target.shape)
-            loss = F.mse_loss(output,target)
+            loss = (1 - args.lambdaa)*F.mse_loss(output,target) + args.lambdaa*F.mse_loss(out_ksp,ksp_us)
             #loss = F.mse_loss(output,target, size_average=False)
 
             
             losses.append(loss.item())
+
+            loss_img = (1 - args.lambdaa)*F.mse_loss(output,target)
+            loss_ksp = args.lambdaa*F.mse_loss(out_ksp,ksp_us) 
+
+            losses_img.append(loss_img.item())
+            losses_ksp.append(loss_ksp.item())
             
         writer.add_scalar('Dev_Loss',np.mean(losses),epoch)
+        writer.add_scalar('Dev_Loss_img',np.mean(losses_img),epoch)
+        writer.add_scalar('Dev_Loss_ksp',np.mean(losses_ksp),epoch)
        
     return np.mean(losses), time.perf_counter() - start
 
@@ -154,30 +180,38 @@ def visualize(args, epoch, model, data_loader, writer):
     model.eval()
     with torch.no_grad():
         for iter, data in enumerate(tqdm(data_loader)):
-            ksp_us , img_us , target, _ = data
             
-    
+            ksp_us , img_us , target, maxi = data
+            
             img_us = img_us.unsqueeze(1).to(args.device).float()
-
             target = target.unsqueeze(1).to(args.device).float()
-            ksp_us = ksp_us.permute(0,3,1,2).to(args.device).float()
+            ksp_us = ksp_us.to(args.device).float()
+            ksp_us_in = ksp_us.permute(0,3,1,2).to(args.device).float()
 
 
-            output,out_dautomap= model(ksp_us,img_us)
+
+            maxi = maxi.to(args.device).float()
+
+            output, _ , img_inter = model(ksp_us_in,maxi)
+
+
+
+
 
             # print("img_us=",img_us.shape,"output=",output.shape,"dautomap=",out_dautomap.shape,"target=",target.shape)
 
             target = target.cpu()
             output = output.cpu()
+            img_us = img_us.cpu()
             
             # img_us_abs = torch.sqrt(img_us[:,0,:,:]**2 + img_us[:,1,:,:]**2).unsqueeze(1)
-            # out_dautomap_abs = torch.sqrt(out_dautomap[:,0,:,:]**2 + out_dautomap[:,1,:,:]**2).unsqueeze(1)
-
+            # out_dautomap_abs = torch.sqrt(img_inter[:,0,:,:]**2 + img_inter[:,1,:,:]**2).unsqueeze(1)
+            out_dautomap_abs = img_inter
             # print("img_us_abs=",img_us_abs.shape , "out_dautomap",out_dautomap_abs.shape) 
             save_image(img_us, 'Input')
             save_image(target, 'Target')
             save_image(output, 'Reconstruction')
-            save_image(out_dautomap, 'dAutomap_Reconstruction')
+            save_image(out_dautomap_abs, 'dAutomap_Reconstruction')
 
             save_image(torch.abs(target.float() - output.float()), 'Error')
             break
@@ -199,11 +233,11 @@ def save_model(args, exp_dir, epoch, model, optimizer,best_dev_loss,is_new_best)
     if is_new_best:
         shutil.copyfile(exp_dir / 'model.pt', exp_dir / 'best_model.pt')
         
-def build_dualencoderunet(args):
+def build_unet(chan_in,chan_out,args):
     # print("device",args.device)
-    model = UnetModelParallelEncoder(
-        in_chans=1,
-        out_chans=1,
+    model = UnetModel(
+        in_chans=chan_in,
+        out_chans=chan_out,
         chans=args.num_chans,
         num_pool_layers=args.num_pools,
         drop_prob=args.drop_prob
@@ -213,9 +247,9 @@ def build_dualencoderunet(args):
 
 
 def build_model(args):
-    dautomap_model = build_dautomap(args)
-    dualencoderunet_model = build_dualencoderunet(args)
-    model = dAUTOMAPDualEncoderUnet(dautomap_model,dualencoderunet_model).to(args.device)
+    unet_k = build_unet(2,2,args)
+    unet_i = build_unet(1,1,args)
+    model = Wnet(unet_k,unet_i).to(args.device)
     
     # model = dautomap_model
     return model
@@ -273,14 +307,14 @@ def main(args):
     train_loader, dev_loader , display_loader = create_data_loaders(args)    #
     print (" \n Dataloader initialized ....")
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_step_size, args.lr_gamma)
-    print(" \n  # # # # # initializing PRETEXT training OF DUALENCODER  using ",args.sample,"volumes,for",args.acceleration_factor,"x accleration # # # # #")
+    print(" \n  # # # # # initiating PRETEXT-TRAINING OF W-NET using ",args.sample,"volumes,for",args.acceleration_factor,"xaccleration # # # # #")
     for epoch in range(start_epoch, args.num_epochs):
 
         scheduler.step(epoch)
         train_loss,train_time = train_epoch(args, epoch, model,train_loader,optimizer,writer)
-        # torch.cuda.empty_cache()
+
         dev_loss,dev_time = evaluate(args, epoch, model, dev_loader, writer)
-        # torch.cuda.empty_cache()
+
         visualize(args, epoch, model, display_loader, writer)
 
         is_new_best = dev_loss < best_dev_loss
@@ -329,6 +363,8 @@ def create_arg_parser():
     parser.add_argument('--usmask_path',type=str,help='undersampling mask path')
     parser.add_argument('--sample', type=int, default=1,
                         help='Number of volumes to be used for training and validation')
+    parser.add_argument('--lambdaa', type=float,
+                        help='strength of ksp and img in loss function')
 
 
     

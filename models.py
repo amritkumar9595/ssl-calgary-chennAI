@@ -449,7 +449,7 @@ class Wnet(nn.Module):
     def forward(self,input_kspace,maxi):
 
         
-      
+        # print("inp_ksp",input_kspace.max())
         ksp_pred = self.model1(input_kspace).permute(0,2,3,1)
         
         # print("ksp_pred",ksp_pred.shape)
@@ -468,7 +468,7 @@ class Wnet(nn.Module):
         output = self.model2(img_pred/maxi2)
         # print("ksp_pred",ksp_pred.shape)
 
-        return output, 2*ksp_pred/(100*maxi) , img_pred
+        return output, ksp_pred/(10*maxi) , img_pred
 
 
 def build_dautomap(args):

@@ -13,8 +13,8 @@ import torchvision
 from tensorboardX import SummaryWriter
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
-from mri_data import SliceData_ft
-from models import dAUTOMAP , UnetModelParallelEncoder, dAUTOMAPDualEncoderUnet ,build_dautomap
+from mri_data import SliceData_pt
+from models import dAUTOMAP , UnetModelParallelEncoder, dAUTOMAPDualEncoderUnet , build_dautomap
 import torchvision
 from torch import nn
 from torch.autograd import Variable
@@ -29,8 +29,8 @@ def create_datasets(args):
     # train_path ='/media/student1/NewVolume/MR_Reconstruction/datasets/calgary_singlecoil/Train'
     # validation_path ='/media/student1/NewVolume/MR_Reconstruction/datasets/calgary_singlecoil/Val'
     
-    train_data = SliceData_ft(args.train_path,args.acceleration_factor,args.dataset_type,sample_rate=args.sample)
-    dev_data   = SliceData_ft(args.validation_path,args.acceleration_factor,args.dataset_type,sample_rate=10)
+    train_data = SliceData_pt(args.train_path,args.acceleration_factor,args.dataset_type,sample_rate=25)
+    dev_data   = SliceData_pt(args.validation_path,args.acceleration_factor,args.dataset_type,sample_rate=10)
 
     return dev_data, train_data
 
@@ -75,11 +75,9 @@ def train_epoch(args, epoch, model,data_loader, optimizer, writer):
         #print (data)
 
         #print ("Received data from loader")
-        _, ksp_us , img_us , target, _ ,_ ,_ = data
+        ksp_us , img_us , target, _ = data
         
-        img_us = img_us.to(args.device).float()
-        # img_us = img_us.permute(0,3,1,2)
-        img_us = img_us.unsqueeze(1)
+        img_us = img_us.unsqueeze(1).to(args.device).float()
 
         target = target.unsqueeze(1).to(args.device).float()
 
@@ -87,7 +85,7 @@ def train_epoch(args, epoch, model,data_loader, optimizer, writer):
         # print("ksp_us",ksp_us.shape)
 
 
-        output,_= model(ksp_us,img_us)
+        output= model(ksp_us)
         #print ("Input passed to model")
         # print("image",image.shape,output.shape,target.shape)
         loss = F.mse_loss(output,target)
@@ -123,17 +121,15 @@ def evaluate(args, epoch, model, data_loader, writer):
     with torch.no_grad():
         for iter, data in enumerate(tqdm(data_loader)):
     
-            _ , ksp_us , img_us , target, _ ,_ ,_ = data
+            ksp_us , img_us , target, _ = data
             
-            img_us = img_us.to(args.device).float()
-            # img_us = img_us.permute(0,3,1,2)
-            img_us = img_us.unsqueeze(1)
+            img_us = img_us.unsqueeze(1).to(args.device).float()
 
             target = target.unsqueeze(1).to(args.device).float()
             ksp_us = ksp_us.permute(0,3,1,2).to(args.device).float()
 
 
-            output,_= model(ksp_us,img_us)
+            output= model(ksp_us)
             #print ("Input passed to model")
             # print("image",image.shape,output.shape,target.shape)
             loss = F.mse_loss(output,target)
@@ -158,17 +154,16 @@ def visualize(args, epoch, model, data_loader, writer):
     model.eval()
     with torch.no_grad():
         for iter, data in enumerate(tqdm(data_loader)):
-            _ , ksp_us , img_us , target, _ , _, _ = data
+            ksp_us , img_us , target, _ = data
             
-            img_us = img_us.to(args.device).float()
-            # img_us = img_us.permute(0,3,1,2)
-            img_us = img_us.unsqueeze(1)
+    
+            img_us = img_us.unsqueeze(1).to(args.device).float()
 
             target = target.unsqueeze(1).to(args.device).float()
             ksp_us = ksp_us.permute(0,3,1,2).to(args.device).float()
 
 
-            output,out_dautomap= model(ksp_us,img_us)
+            output= model(ksp_us)
 
             # print("img_us=",img_us.shape,"output=",output.shape,"dautomap=",out_dautomap.shape,"target=",target.shape)
 
@@ -182,7 +177,7 @@ def visualize(args, epoch, model, data_loader, writer):
             save_image(img_us, 'Input')
             save_image(target, 'Target')
             save_image(output, 'Reconstruction')
-            save_image(out_dautomap, 'dAutomap_Reconstruction')
+
 
             save_image(torch.abs(target.float() - output.float()), 'Error')
             break
@@ -204,27 +199,15 @@ def save_model(args, exp_dir, epoch, model, optimizer,best_dev_loss,is_new_best)
     if is_new_best:
         shutil.copyfile(exp_dir / 'model.pt', exp_dir / 'best_model.pt')
         
-def build_dualencoderunet(args):
-    # print("device",args.device)
-    model = UnetModelParallelEncoder(
-        in_chans=1,
-        out_chans=1,
-        chans=args.num_chans,
-        num_pool_layers=args.num_pools,
-        drop_prob=args.drop_prob
-    ).to(args.device)
-    
-    return model
 
 
 
 def build_model(args):
     dautomap_model = build_dautomap(args)
-    dualencoderunet_model = build_dualencoderunet(args)
-    model = dAUTOMAPDualEncoderUnet(dautomap_model,dualencoderunet_model).to(args.device)
+
     
     # model = dautomap_model
-    return model
+    return dautomap_model
 
 
 
@@ -279,7 +262,7 @@ def main(args):
     train_loader, dev_loader , display_loader = create_data_loaders(args)    #
     print (" \n Dataloader initialized ....")
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_step_size, args.lr_gamma)
-    print(" \n  # # # # # initiating training DUALENCODER  from scratch  using ",args.sample,"volumes,for",args.acceleration_factor,"xaccleration # # # # #")
+    print(" \n  # # # # # initiating PRETEXT training OF dAUTOMAP using ",args.sample,"volumes,for",args.acceleration_factor,"x accleration # # # # #")
     for epoch in range(start_epoch, args.num_epochs):
 
         scheduler.step(epoch)

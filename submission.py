@@ -129,6 +129,8 @@ def run_submission(model, data_loader):
             output,_= model(ksp_us,img_us)
         elif args.model == 'wnet':
             output, _ , _= model(ksp_us,maxi)
+        elif args.model == 'dautomap':
+            output = model(ksp_us)
         
         output = output.float()*maxi
 
@@ -194,6 +196,8 @@ def load_model(args):
         model = build_dualencoder(args)
     elif (args.model == 'wnet'):
         model = build_wnet(args)
+    elif (args.model == 'dautomap'):
+        model = build_dautomap(args)
 
     print(" \n loading " , args.model , "model from = ",args.model_path)
     path = torch.load(args.model_path)

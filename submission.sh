@@ -34,9 +34,9 @@ ZERO-FILLED
 #<<SUBMISSION
 # PRETEXT='scratch'
 PRETEXT='finetuning' 
-MODEL='wnet'
+MODEL='dautomap'
 N0_OF_VOLUMES=5
-ACC_FACTOR=4
+ACC_FACTOR=8
 OUT_DIR='/media/student1/RemovableVolume/singlechannel_calgary_submission/acc_'${ACC_FACTOR}'x/'${MODEL}'/'${PRETEXT}'/'${N0_OF_VOLUMES}'_volumes'
 MODEL_PATH='/media/student1/NewVolume/MR_Reconstruction/experiments/singlechannel_calgary/acc_'${ACC_FACTOR}'x/'${MODEL}'/'${PRETEXT}'/'${N0_OF_VOLUMES}'_volumes/best_model.pt'
 python submission.py --batch-size ${BATCH_SIZE}  --device ${DEVICE} --out-dir ${OUT_DIR} --test-path ${TEST_PATH}  --acceleration-factor ${ACC_FACTOR} --model-path ${MODEL_PATH} --model ${MODEL}

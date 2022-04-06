@@ -1,5 +1,5 @@
 # Self-supervision based Deep Learning for Fast MRI Reconstruction
-This repository is the official Pytorch code for our paper titled: "**Improving Fast MRI Reconstructions with Pretext Learning in Low-Data Regime**"
+This repository provides the official Pytorch code for our paper titled: "**Improving Fast MRI Reconstructions with Pretext Learning in Low-Data Regime**"
 <br>
 <br>
 The paper got accepted in IEEE 44th Annual International Conference of the IEEE Engineering in Medicine and Biology Society (EMBC-2022) held at Glasgow, Scotland, UK.

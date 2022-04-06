@@ -26,4 +26,4 @@ The Brain MRI data is collected from [Calgary-Campinas Public Brain MR Datasest]
 <img src="Images/box_plot.png">
 
 ### training and validation curves
-<img src="Images/loss-curves.png">
+<img src="Images/algo_loss.png">

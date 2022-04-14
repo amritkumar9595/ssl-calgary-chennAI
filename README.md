@@ -27,3 +27,6 @@ The Brain MRI data is collected from [Calgary-Campinas Public Brain MR Datasest]
 
 ### proposed algorithm                                          
 <img src="Images/algo_loss.png">
+
+## questions
+if you face any problems or want to discuss ideas plz reach out to me at: ee18s037@smail.iitm.ac.in
